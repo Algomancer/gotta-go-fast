@@ -71,7 +71,8 @@ def get_dpci_matrix(transitions):
             out.append(get_dpci(prev_notes, notes))
             prev_notes = notes
 
-  return np.array(out).T
+    return np.array(out).T
 
 input = np.load('matrix.npy')
 output = get_dpci_matrix(input)
+print(output)
