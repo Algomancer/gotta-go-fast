@@ -1,77 +1,40 @@
 import numpy as np
 
+_index = np.array([10, 8, 6, 4, 2, 0, 1, 3, 5, 7, 9, 11])
+
 
 def get_dpci(a, b):
     """
-    Computes the directed pitch class interval vector for 
+    Computes the directed pitch class interval vector for
     the chord transition a -> b.
     Args:
         a, b - lists of pitch values
     Returns:
         A 12-vector, with the frequency counts of each directed pitch
-        interval for the notes in a and the notes in b. 
+        interval for the notes in a and the notes in b.
         Indices are arranged [0, +1, -1, +2, -2, +3, -3, +4, -4, +5, -5, 6]
     """
-
-    # define the mapping from directed interval --> vector index
-    index = {
-        '0': 0,
-        '1': 1,
-        '-1': 2,
-        '2': 3,
-        '-2': 4,
-        '3': 5,
-        '-3': 6,
-        '4': 7,
-        '-4': 8,
-        '5': 9,
-        '-5': 10,
-        '6': 11
-    }
-
-    # initialize counts to zero
-    dpci = [0] * 12
-
-    # tally the intervals
-    for x in a:
-        for y in b:
-            # get the absolute distance
-            dist = y - x
-
-            # normalise to a pitch interval
-            interval = dist % 12
-
-            # convert to directed interval
-            # (i.e. distance to closest key in this pitch)
-            if interval > 6:
-                interval = interval - 12
-
-            i = index[str(interval)]
-            dpci[i] += 1
-
-    return np.array(dpci)
+    dist = np.expand_dims(b, axis=1) - a
+    dist %= 12
+    dist[dist > 6] -= 12
+    dist = dist.reshape(-1)
+    indices = _index[dist+5]
+    return np.bincount(indices, minlength=12)
 
 
 def get_dpci_matrix(transitions):
     """
     Given a binary pitch transition matrix (128, seq_len)
-    :param transitions: 
-    :return: 
+    :param transitions:
+    :return:
     """
+    notes = (np.where(transitions[:, i] > 0)[0]
+             for i in range(transitions.shape[1]))
+    notes = [n for n in notes if len(n) > 0]
+    out = [get_dpci(notes[i], notes[i+1]) for i in range(len(notes)-1)]
 
-    out = []
-    prev_notes = np.where(transitions[:, 0] > 0)[0]
-    for i in range(1, transitions.shape[1]):
-        notes = np.where(transitions[:, i] > 0)[0]
+    return np.stack(out, axis=1)
 
-        # skip over empty columns
-        if len(notes) == 0:
-            continue
-        else:
-            out.append(get_dpci(prev_notes, notes))
-            prev_notes = notes
-
-    return np.array(out).T
 
 input = np.load('matrix.npy')
 output = get_dpci_matrix(input)
